@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"pocketvue/config"
 	"pocketvue/hooks"
 	"pocketvue/routes"
 	"pocketvue/ui"
@@ -21,6 +22,9 @@ import (
 // Initialize environment variables
 func init() {
 	godotenv.Load()
+	if err := config.Init(); err != nil {
+		log.Printf("Warning: Failed to initialize config: %v", err)
+	}
 }
 
 func main() {

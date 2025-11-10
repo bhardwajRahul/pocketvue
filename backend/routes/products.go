@@ -1,9 +1,9 @@
 package routes
 
 import (
-	"net/http"
 	"pocketvue/constants"
 	"pocketvue/helpers"
+	"pocketvue/types"
 
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -13,31 +13,38 @@ func GetProducts(e *core.RequestEvent) error {
 	// Fetch all non-archived products, ordered by created date
 	records, err := helpers.FindAllRecords(e.App, constants.CollectionPolarProducts)
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to fetch products",
-		})
+		return helpers.JSONInternalServerError(e, "failed to fetch products")
 	}
 
-	// Filter out archived products
-	var activeProducts []map[string]interface{}
+	// Filter out archived products and convert to response structs
+	var activeProducts []types.ProductResponse
 	for _, record := range records {
 		if !record.GetBool("is_archived") {
-			productMap := map[string]interface{}{
-				"id":                       record.GetString("id"),
-				"name":                     record.GetString("name"),
-				"description":              record.GetString("description"),
-				"price_amount":             record.GetInt("price_amount"),
-				"price_currency":           record.GetString("price_currency"),
-				"recurring_interval":       record.GetString("recurring_interval"),
-				"recurring_interval_count": record.GetInt("recurring_interval_count"),
-				"is_recurring":             record.GetBool("is_recurring"),
-				"trial_interval":           record.GetString("trial_interval"),
-				"trial_interval_count":     record.GetInt("trial_interval_count"),
-				"polar_price_id":           record.GetString("polar_price_id"),
+			product := types.ProductResponse{
+				ID:                     record.GetString("id"),
+				Name:                   record.GetString("name"),
+				PriceAmount:            record.GetInt("price_amount"),
+				PriceCurrency:          record.GetString("price_currency"),
+				RecurringInterval:      record.GetString("recurring_interval"),
+				RecurringIntervalCount: record.GetInt("recurring_interval_count"),
+				IsRecurring:            record.GetBool("is_recurring"),
+				PolarPriceID:           record.GetString("polar_price_id"),
 			}
-			activeProducts = append(activeProducts, productMap)
+
+			// Add optional fields if they exist
+			if desc := record.GetString("description"); desc != "" {
+				product.Description = desc
+			}
+			if trialInterval := record.GetString("trial_interval"); trialInterval != "" {
+				product.TrialInterval = trialInterval
+			}
+			if trialIntervalCount := record.GetInt("trial_interval_count"); trialIntervalCount > 0 {
+				product.TrialIntervalCount = trialIntervalCount
+			}
+
+			activeProducts = append(activeProducts, product)
 		}
 	}
 
-	return e.JSON(http.StatusOK, activeProducts)
+	return helpers.JSONSuccess(e, activeProducts)
 }

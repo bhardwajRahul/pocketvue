@@ -4,7 +4,7 @@
   "description": "A single binary Go + Vue saas starter kit",
   "scripts": {
     "dev": "concurrently \"pnpm run dev:frontend\" \"pnpm run dev:backend\"",
-    "dev:frontend": "cd frontend && pnpm run dev --host",
+    "dev:frontend": "cd frontend && pnpm run dev",
     "dev:backend": "cd backend && go run -tags dev . serve --dev=0",
     "build:frontend": "cd frontend && pnpm run generate",
     "build:backend": "go build -C backend -ldflags=\"-s -w\" -o pocketvue .",

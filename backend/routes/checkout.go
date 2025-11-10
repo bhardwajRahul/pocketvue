@@ -3,8 +3,6 @@ package routes
 import (
 	"encoding/json"
 	"log"
-	"net/http"
-	"os"
 	"pocketvue/helpers"
 	"pocketvue/services"
 
@@ -46,40 +44,17 @@ func CreateCheckoutSession(e *core.RequestEvent) error {
 	var req CreateCheckoutRequest
 	if err := json.NewDecoder(e.Request.Body).Decode(&req); err != nil {
 		log.Printf("Error parsing checkout request: %v", err)
-		return e.JSON(http.StatusBadRequest, map[string]string{
-			"error": "invalid request body",
-		})
+		return helpers.JSONBadRequest(e, "invalid request body")
 	}
 
 	// Validate required fields
 	if len(req.Products) == 0 {
-		return e.JSON(http.StatusBadRequest, map[string]string{
-			"error": "products field is required and must contain at least one product ID",
-		})
+		return helpers.JSONBadRequest(e, "products field is required and must contain at least one product ID")
 	}
 
-	// Get URLs from environment variables
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		log.Printf("Warning: FRONTEND_URL not set, using default")
-		frontendURL = "http://localhost:3000"
-	}
-
-	// Build workspace-specific URLs if workspace_slug is provided
-	var successURL, returnURL string
-	if req.WorkspaceSlug != "" {
-		// Determine the return path (defaults to /dashboard)
-		returnPath := "/dashboard"
-		if req.ReturnPath != "" {
-			returnPath = req.ReturnPath
-		}
-
-		successURL = frontendURL + "/" + req.WorkspaceSlug + returnPath + "?checkout=success"
-		returnURL = frontendURL + "/" + req.WorkspaceSlug + returnPath
-	} else {
-		successURL = frontendURL + "/checkout/success"
-		returnURL = frontendURL + "/dashboard"
-	}
+	// Build URLs using helper functions
+	successURL := helpers.BuildCheckoutSuccessURL(req.WorkspaceSlug, req.ReturnPath)
+	returnURL := helpers.BuildCheckoutReturnURL(req.WorkspaceSlug, req.ReturnPath)
 
 	// Extract user information
 	userID := user.GetString("id")
@@ -102,13 +77,11 @@ func CreateCheckoutSession(e *core.RequestEvent) error {
 
 	if err != nil {
 		log.Printf("Error creating checkout session for user %s: %v", userID, err)
-		return e.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to create checkout session",
-		})
+		return helpers.JSONInternalServerError(e, "failed to create checkout session")
 	}
 
 	// Return checkout URL
-	return e.JSON(http.StatusOK, CreateCheckoutResponse{
+	return helpers.JSONSuccess(e, CreateCheckoutResponse{
 		URL: checkoutURL,
 	})
 }
@@ -125,31 +98,11 @@ func CreateCustomerPortalSession(e *core.RequestEvent) error {
 	var req CreateCustomerPortalRequest
 	if err := json.NewDecoder(e.Request.Body).Decode(&req); err != nil {
 		log.Printf("Error parsing customer portal request: %v", err)
-		return e.JSON(http.StatusBadRequest, map[string]string{
-			"error": "invalid request body",
-		})
+		return helpers.JSONBadRequest(e, "invalid request body")
 	}
 
-	// Get frontend URL from environment
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		log.Printf("Warning: FRONTEND_URL not set, using default")
-		frontendURL = "http://localhost:3000"
-	}
-
-	// Build workspace-specific return URL if workspace_slug is provided
-	var returnURL string
-	if req.WorkspaceSlug != "" {
-		// Determine the return path (defaults to /dashboard/settings/billing)
-		returnPath := "/dashboard/settings/billing"
-		if req.ReturnPath != "" {
-			returnPath = req.ReturnPath
-		}
-
-		returnURL = frontendURL + "/" + req.WorkspaceSlug + returnPath
-	} else {
-		returnURL = frontendURL + "/dashboard/settings/billing"
-	}
+	// Build return URL using helper function
+	returnURL := helpers.BuildCustomerPortalReturnURL(req.WorkspaceSlug, req.ReturnPath)
 
 	// Extract user ID
 	userID := user.GetString("id")
@@ -162,13 +115,11 @@ func CreateCustomerPortalSession(e *core.RequestEvent) error {
 
 	if err != nil {
 		log.Printf("Error creating customer portal session for user %s: %v", userID, err)
-		return e.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "failed to create customer portal session",
-		})
+		return helpers.JSONInternalServerError(e, "failed to create customer portal session")
 	}
 
 	// Return portal URL
-	return e.JSON(http.StatusOK, CreateCustomerPortalResponse{
+	return helpers.JSONSuccess(e, CreateCustomerPortalResponse{
 		URL: portalURL,
 	})
 }

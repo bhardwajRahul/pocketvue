@@ -4,16 +4,47 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"os"
+	"pocketvue/config"
 	"strings"
 	"time"
 
 	svix "github.com/standard-webhooks/standard-webhooks/libraries/go"
 )
 
+// WebhookHeaders contains extracted webhook headers
+type WebhookHeaders struct {
+	ID        string
+	Timestamp string
+	Signature string
+}
+
+// ExtractWebhookHeaders extracts webhook headers from HTTP request headers
+// Tries both canonical (Webhook-Id) and lowercase (webhook-id) forms
+func ExtractWebhookHeaders(headers http.Header) WebhookHeaders {
+	var wh WebhookHeaders
+
+	// Try canonical form first, then lowercase
+	wh.ID = headers.Get("Webhook-Id")
+	if wh.ID == "" {
+		wh.ID = headers.Get("webhook-id")
+	}
+
+	wh.Timestamp = headers.Get("Webhook-Timestamp")
+	if wh.Timestamp == "" {
+		wh.Timestamp = headers.Get("webhook-timestamp")
+	}
+
+	wh.Signature = headers.Get("Webhook-Signature")
+	if wh.Signature == "" {
+		wh.Signature = headers.Get("webhook-signature")
+	}
+
+	return wh
+}
+
 // VerifyWebhookSignature verifies the webhook signature using Standard Webhooks
 func VerifyWebhookSignature(payload []byte, headers http.Header) error {
-	secret := os.Getenv("POLAR_WEBHOOK_SECRET")
+	secret := config.PolarWebhookSecret
 	if secret == "" {
 		return fmt.Errorf("POLAR_WEBHOOK_SECRET not configured")
 	}
@@ -37,23 +68,10 @@ func VerifyWebhookSignature(payload []byte, headers http.Header) error {
 		return fmt.Errorf("failed to initialize webhook verifier: %w", err)
 	}
 
-	// Extract headers - try both canonical and lowercase forms
-	msgID := headers.Get("Webhook-Id")
-	if msgID == "" {
-		msgID = headers.Get("webhook-id")
-	}
+	// Extract headers using helper function
+	whHeaders := ExtractWebhookHeaders(headers)
 
-	msgTimestamp := headers.Get("Webhook-Timestamp")
-	if msgTimestamp == "" {
-		msgTimestamp = headers.Get("webhook-timestamp")
-	}
-
-	msgSignature := headers.Get("Webhook-Signature")
-	if msgSignature == "" {
-		msgSignature = headers.Get("webhook-signature")
-	}
-
-	if msgID == "" || msgTimestamp == "" || msgSignature == "" {
+	if whHeaders.ID == "" || whHeaders.Timestamp == "" || whHeaders.Signature == "" {
 		return fmt.Errorf("missing required webhook headers")
 	}
 
@@ -67,11 +85,11 @@ func VerifyWebhookSignature(payload []byte, headers http.Header) error {
 	// Parse Unix timestamp (seconds since epoch)
 	var timestamp time.Time
 	var timestampInt int64
-	if _, err := fmt.Sscanf(msgTimestamp, "%d", &timestampInt); err == nil {
+	if _, err := fmt.Sscanf(whHeaders.Timestamp, "%d", &timestampInt); err == nil {
 		timestamp = time.Unix(timestampInt, 0)
 	} else {
 		// Try parsing as RFC3339 as fallback
-		timestamp, err = time.Parse(time.RFC3339, msgTimestamp)
+		timestamp, err = time.Parse(time.RFC3339, whHeaders.Timestamp)
 		if err != nil {
 			return fmt.Errorf("invalid timestamp format: %w", err)
 		}

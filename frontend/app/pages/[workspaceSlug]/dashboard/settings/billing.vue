@@ -32,9 +32,10 @@
 
 <script lang="ts" setup>
 const route = useRoute()
-const { token, user } = useAuth()
-const { pb, buildApiUrl, refreshUser } = usePocketbase()
+const { user } = useAuth()
+const { pb, refreshUser } = usePocketbase()
 const { products, setProducts, formatPrice, formatInterval } = useProducts()
+const { $api } = useNuxtApp()
 const loadingProduct = ref<string | null>(null)
 const isLoadingPortal = ref(false)
 const error = ref<string | null>(null)
@@ -98,7 +99,9 @@ const hasActiveSubscription = computed(() => Boolean(subscriptionStatus.value))
 
 const currentPlan = computed(() => {
   if (!user.value?.subscription_product_id) return null
-  return products.value.find(p => p.id === user.value?.subscription_product_id)
+  return products.value.find(
+    (p: PolarProduct) => p.id === user.value?.subscription_product_id
+  )
 })
 
 const recommendedPlanId = computed(
@@ -114,20 +117,14 @@ const subscribeToPlan = async (planId: string) => {
 
     const workspaceSlug = route.params.workspaceSlug as string
 
-    const response = await $fetch<{ url: string }>(
-      buildApiUrl('api/checkout'),
-      {
-        method: 'POST',
-        body: {
-          products: [planId],
-          workspace_slug: workspaceSlug,
-          return_path: '/dashboard/settings/billing'
-        },
-        headers: {
-          Authorization: `${token.value}`
-        }
+    const response = await $api<{ url: string }>('api/checkout', {
+      method: 'POST',
+      body: {
+        products: [planId],
+        workspace_slug: workspaceSlug,
+        return_path: '/dashboard/settings/billing'
       }
-    )
+    })
 
     // Redirect to Polar checkout page
     if (response.url) {
@@ -151,19 +148,13 @@ const manageSubscription = async () => {
     isLoadingPortal.value = true
     const workspaceSlug = route.params.workspaceSlug as string
 
-    const response = await $fetch<{ url: string }>(
-      buildApiUrl('api/customer-portal'),
-      {
-        method: 'POST',
-        body: {
-          workspace_slug: workspaceSlug,
-          return_path: '/dashboard/settings/billing'
-        },
-        headers: {
-          Authorization: `${token.value}`
-        }
+    const response = await $api<{ url: string }>('api/customer-portal', {
+      method: 'POST',
+      body: {
+        workspace_slug: workspaceSlug,
+        return_path: '/dashboard/settings/billing'
       }
-    )
+    })
 
     // Redirect to Polar customer portal
     if (response.url) {

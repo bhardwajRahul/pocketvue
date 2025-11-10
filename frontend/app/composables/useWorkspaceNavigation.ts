@@ -18,7 +18,13 @@ export const useWorkspaceNavigation = () => {
     return navigateTo(getWorkspacePath(workspaceSlug, subPath))
   }
 
-  const redirectToDefaultWorkspace = () => {
+  const redirectToDefaultWorkspace = async () => {
+    await ensureWorkspacesLoaded()
+
+    if (workspaces.value.length === 0) {
+      return navigateTo('/new-workspace')
+    }
+
     const defaultWorkspace = getDefaultWorkspace(
       workspaces.value,
       getLastUsedWorkspace()

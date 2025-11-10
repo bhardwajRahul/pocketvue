@@ -2,7 +2,6 @@ package routes
 
 import (
 	"log"
-	"net/http"
 	"pocketvue/constants"
 	"pocketvue/helpers"
 
@@ -24,8 +23,8 @@ func GetAllWorkspaces(e *core.RequestEvent) error {
 
 	records, err := helpers.FindAllRecords(e.App, constants.CollectionWorkspaces)
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return helpers.JSONInternalServerError(e, err.Error())
 	}
 
-	return e.JSON(http.StatusOK, records)
+	return helpers.JSONSuccess(e, records)
 }

@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"log"
-	"os"
+	"pocketvue/config"
 
 	"github.com/pocketbase/pocketbase"
 	polargo "github.com/polarsource/polar-go"
@@ -18,15 +18,9 @@ type PolarService struct {
 
 // NewPolarService creates a new Polar service instance
 func NewPolarService() *PolarService {
-	// Determine Polar server based on environment
-	polarServer := "sandbox" // default to sandbox
-	if os.Getenv("POLAR_ENVIRONMENT") == "production" || os.Getenv("APP_ENV") == "production" {
-		polarServer = "production"
-	}
-
 	client := polargo.New(
-		polargo.WithServer(polarServer),
-		polargo.WithSecurity(os.Getenv("POLAR_ACCESS_TOKEN")),
+		polargo.WithServer(config.GetPolarServer()),
+		polargo.WithSecurity(config.PolarAccessToken),
 	)
 
 	return &PolarService{

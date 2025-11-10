@@ -61,10 +61,15 @@
   }
 }
 
-/* Remove margins from p tags inside li elements in prose */
-.prose li > p {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
+/* Remove margins from p tags inside li elements in prose 
+You can remove this as its mostly used by the notes demo
+*/
+.prose li > p:first-of-type {
+  @apply my-0;
+}
+
+.prose img:first-of-type {
+  @apply rounded mt-1 mb-0;
 }
 
 .prose > p {

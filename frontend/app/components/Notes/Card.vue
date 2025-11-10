@@ -7,7 +7,7 @@
   >
     <div
       class="relative flex cursor-pointer flex-col gap-3 overflow-hidden
-        rounded-lg bg-white p-4 text-left shadow-md transition-all duration-200
+        rounded-lg bg-white p-4 text-left ring-1 ring-muted transition-all duration-200
         focus:outline-none dark:bg-neutral-800 w-full"
     >
       <p class="text-sm font-bold">
@@ -24,7 +24,7 @@
       />
       <div class="flex justify-end">
         <span class="text-dimmed text-[10px]">
-          {{ useDateFormat(note.created, 'MMM D, YYYY').value }}
+          {{ formattedDate }}
         </span>
       </div>
     </div>
@@ -39,6 +39,10 @@ const props = defineProps<{
 }>()
 
 const { deleteNote } = useNotes()
+
+const formattedDate = computed(() => {
+  return useDateFormat(props.note.created, 'MMM D, YYYY').value
+})
 
 const handleDeleteNote = async (noteId: string) => {
   try {

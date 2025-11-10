@@ -1,6 +1,5 @@
 import type { RecordModel } from 'pocketbase'
 import { parsePocketBaseError } from '~/utils/pocketbaseErrorHandler'
-import { getDefaultWorkspace, getWorkspacePath } from '~/utils/workspace'
 
 export const useAuth = () => {
   const { pb, user } = usePocketbase()
@@ -86,25 +85,11 @@ export const useAuth = () => {
   }
 
   const redirectAfterLogin = async () => {
-    const { fetchWorkspaces, workspaces } = useWorkspaces()
-    const { getLastUsedWorkspace } = useWorkspacePreferences()
+    const { fetchWorkspaces } = useWorkspaces()
+    const { redirectToDefaultWorkspace } = useWorkspaceNavigation()
 
     await fetchWorkspaces()
-
-    if (workspaces.value.length === 0) {
-      return navigateTo('/new-workspace')
-    }
-
-    const defaultWorkspace = getDefaultWorkspace(
-      workspaces.value,
-      getLastUsedWorkspace()
-    )
-
-    if (defaultWorkspace) {
-      return navigateTo(getWorkspacePath(defaultWorkspace.slug))
-    }
-
-    return navigateTo('/new-workspace')
+    return redirectToDefaultWorkspace()
   }
 
   return {

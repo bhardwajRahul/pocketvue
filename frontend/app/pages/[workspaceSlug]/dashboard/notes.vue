@@ -24,7 +24,7 @@
 
     <template #body>
       <div
-        class="relative column-1 md:columns-2 lg:columns-5 gap-4 space-y-4
+        class="relative column-1 md:columns-2 lg:columns-4 gap-4 space-y-4
           *:break-inside-avoid-column *:will-change-transform"
       >
         <NotesCard v-for="note in notes" :key="note.id" :note="note" />

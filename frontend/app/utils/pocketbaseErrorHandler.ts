@@ -10,6 +10,27 @@ export interface ParsedError {
   field?: string
 }
 
+export interface FieldError {
+  code: string
+  message: string
+}
+
+export interface PocketBaseErrorData {
+  data?: Record<string, FieldError> | { data?: Record<string, FieldError> }
+  message?: string
+  status?: number
+}
+
+export interface ClientResponseError {
+  response?: {
+    data?: PocketBaseErrorData
+    message?: string
+    status?: number
+  }
+  message?: string
+  status?: number
+}
+
 type ErrorContext = 'login' | 'register' | 'general'
 
 // Error message mappings
@@ -88,24 +109,56 @@ function getContextualTitle(context: ErrorContext, errorType: string): string {
   return titles[context][errorType] || titles[context].default || 'Error'
 }
 
-function normalizeError(error: any): PocketBaseError | null {
-  // PocketBase ClientResponseError
-  if (error?.response && error?.message && error?.status !== undefined) {
-    return {
-      data: error.response.data || error.response,
-      message: error.response.message || error.message,
-      status: error.response.status || error.status
+function normalizeError(error: unknown): PocketBaseError | null {
+  // Type guard for ClientResponseError
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    'message' in error
+  ) {
+    const clientError = error as ClientResponseError
+    if (
+      clientError.response &&
+      (clientError.response.data || clientError.response.message) &&
+      (clientError.response.status !== undefined || clientError.status !== undefined)
+    ) {
+      return {
+        data: (clientError.response.data as PocketBaseErrorData)?.data || {},
+        message:
+          clientError.response.message ||
+          (clientError.response.data as PocketBaseErrorData)?.message ||
+          clientError.message ||
+          '',
+        status: clientError.response.status || clientError.status || 0
+      }
     }
   }
 
-  // Direct PocketBase error
-  if (error?.data && error?.message && error?.status !== undefined) {
+  // Type guard for direct PocketBaseError
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'data' in error &&
+    'message' in error &&
+    'status' in error
+  ) {
     return error as PocketBaseError
   }
 
-  // Axios-style error
-  if (error?.response?.data) {
-    return error.response.data
+  // Type guard for Axios-style error
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    (error as { response?: { data?: unknown } }).response?.data
+  ) {
+    const axiosError = error as { response: { data: PocketBaseErrorData } }
+    return {
+      data: axiosError.response.data.data || {},
+      message: axiosError.response.data.message || '',
+      status: axiosError.response.data.status || 0
+    }
   }
 
   return null
@@ -115,32 +168,54 @@ function normalizeError(error: any): PocketBaseError | null {
  * Parse a PocketBase error and return a user-friendly error object
  */
 export function parsePocketBaseError(
-  error: any,
+  error: unknown,
   context: ErrorContext = 'general'
 ): ParsedError {
   const pbError = normalizeError(error)
 
   // Handle non-PocketBase errors
   if (!pbError) {
+    const errorMessage =
+      (typeof error === 'object' &&
+        error !== null &&
+        'message' in error &&
+        typeof (error as { message: unknown }).message === 'string'
+        ? (error as { message: string }).message
+        : null) || 'An unexpected error occurred. Please try again.'
+
     return {
       title: getContextualTitle(context, 'error'),
-      message:
-        error?.message || 'An unexpected error occurred. Please try again.'
+      message: errorMessage
     }
   }
 
   // Extract field data (handle nested structure)
-  let fieldData = pbError.data
-  if (pbError.data?.data && typeof pbError.data.data === 'object') {
-    fieldData = pbError.data.data
+  let fieldData: Record<string, FieldError> | undefined
+  if (pbError.data) {
+    if (
+      typeof pbError.data === 'object' &&
+      'data' in pbError.data &&
+      typeof pbError.data.data === 'object'
+    ) {
+      fieldData = pbError.data.data as Record<string, FieldError>
+    } else {
+      fieldData = pbError.data as Record<string, FieldError>
+    }
   }
 
   // Handle field-specific errors
   if (fieldData && Object.keys(fieldData).length > 0) {
     const firstField = Object.keys(fieldData)[0]
-    const fieldError = firstField ? fieldData[firstField] : null
+    if (!firstField) {
+      // Fallback if no field found
+      return {
+        title: getContextualTitle(context, 'error'),
+        message: 'An unexpected error occurred. Please try again.'
+      }
+    }
 
-    if (fieldError?.code && fieldError?.message) {
+    const fieldError = fieldData[firstField]
+    if (fieldError && fieldError.code && fieldError.message) {
       return {
         title: getContextualTitle(context, 'field_error'),
         message: getFieldErrorMessage(
@@ -172,7 +247,7 @@ export function parsePocketBaseError(
  * Get just the error message
  */
 export function getPocketBaseErrorMessage(
-  error: any,
+  error: unknown,
   context: ErrorContext = 'general'
 ): string {
   return parsePocketBaseError(error, context).message
@@ -181,15 +256,25 @@ export function getPocketBaseErrorMessage(
 /**
  * Check if error is related to email verification
  */
-export function isEmailVerificationError(error: any): boolean {
-  const message = error?.message || error?.response?.data?.message || ''
+export function isEmailVerificationError(error: unknown): boolean {
+  const pbError = normalizeError(error)
+  if (!pbError) return false
+
+  const message = pbError.message || ''
   return message.includes('collection requirements to authenticate')
 }
 
 /**
  * Check if error is related to duplicate email
  */
-export function isDuplicateEmailError(error: any): boolean {
-  const data = error?.data || error?.response?.data?.data || {}
-  return data.email?.code === 'validation_not_unique'
+export function isDuplicateEmailError(error: unknown): boolean {
+  const pbError = normalizeError(error)
+  if (!pbError || !pbError.data) return false
+
+  const fieldData =
+    typeof pbError.data === 'object' && 'data' in pbError.data
+      ? (pbError.data.data as Record<string, FieldError>)
+      : (pbError.data as Record<string, FieldError>)
+
+  return fieldData?.email?.code === 'validation_not_unique'
 }

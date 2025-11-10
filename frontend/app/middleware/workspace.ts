@@ -1,33 +1,13 @@
-import {
-  findWorkspaceBySlug,
-  getDefaultWorkspace,
-  getWorkspacePath
-} from '~/utils/workspace'
-
 export default defineNuxtRouteMiddleware(async to => {
   // Handle root path redirect for logged-in users
   if (to.path === '/' && !to.params.workspaceSlug) {
     const { isLoggedIn } = useAuth()
     if (isLoggedIn.value) {
-      const { workspaces, fetchWorkspaces } = useWorkspaces()
-      const { getLastUsedWorkspace } = useWorkspacePreferences()
+      const { fetchWorkspaces } = useWorkspaces()
+      const { redirectToDefaultWorkspace } = useWorkspaceNavigation()
 
       await fetchWorkspaces()
-
-      if (workspaces.value.length === 0) {
-        return navigateTo('/new-workspace')
-      }
-
-      const defaultWorkspace = getDefaultWorkspace(
-        workspaces.value,
-        getLastUsedWorkspace()
-      )
-
-      if (defaultWorkspace) {
-        return navigateTo(getWorkspacePath(defaultWorkspace.slug))
-      }
-
-      return navigateTo('/new-workspace')
+      return redirectToDefaultWorkspace()
     }
     return
   }
@@ -37,31 +17,20 @@ export default defineNuxtRouteMiddleware(async to => {
     return
   }
 
-  const { workspaces, fetchWorkspaces } = useWorkspaces()
+  const { ensureWorkspacesLoaded, findWorkspaceBySlug, redirectToDefaultWorkspace } =
+    useWorkspaceNavigation()
+  const { fetchWorkspaces } = useWorkspaces()
 
   // Ensure workspaces are loaded
-  if (workspaces.value.length === 0) {
-    await fetchWorkspaces()
-  }
-
-  // No workspaces available
-  if (workspaces.value.length === 0) {
-    return navigateTo('/new-workspace')
-  }
+  await ensureWorkspacesLoaded()
 
   // Validate workspace exists
-  let workspace = findWorkspaceBySlug(
-    workspaces.value,
-    to.params.workspaceSlug as string
-  )
+  let workspace = findWorkspaceBySlug(to.params.workspaceSlug as string)
 
   // Try refreshing if not found (stale cache)
   if (!workspace) {
     await fetchWorkspaces()
-    workspace = findWorkspaceBySlug(
-      workspaces.value,
-      to.params.workspaceSlug as string
-    )
+    workspace = findWorkspaceBySlug(to.params.workspaceSlug as string)
   }
 
   if (!workspace) {
