@@ -10,6 +10,7 @@ All-in-one, single-binary SaaS starter kit that combines a PocketBase backend wi
 - [Project Layout](#project-layout)
 - [Getting Started](#getting-started)
 - [Requirements](#requirements)
+- [Setup Checklist](#setup-checklist)
 - [Local Development](#local-development)
 - [Environment & Configuration](#environment--configuration)
 - [Polar Payments](#polar-payments)
@@ -90,12 +91,28 @@ PocketBase stores all data and configuration in `pb_data/` alongside the executa
 
 ## Requirements
 
-To work with the source repository you’ll need:
+To work with the source repository you'll need:
 
 - Go ≥ 1.24 (toolchain managed via `backend/go.mod`)
 - Node ≥ 20 and pnpm ≥ 10.18.2 (`corepack enable pnpm` recommended)
 - Polar sandbox account (for payments testing)
 - SMTP credentials (for email delivery)
+
+## Setup Checklist
+
+Quick setup guide for local development:
+
+- [ ] Install prerequisites: Go ≥ 1.24, Node ≥ 20, and pnpm ≥ 10.18.2
+- [ ] Clone the repository and navigate to the project directory
+- [ ] Install workspace dependencies: `pnpm install`
+- [ ] Install frontend dependencies: `cd frontend && pnpm install && cd ..`
+- [ ] Create `.env` in the repo root with PocketBase admin credentials (see [Environment & Configuration](#environment--configuration))
+- [ ] Create `backend/.env` with `FRONTEND_URL` and Polar credentials (optional for initial setup)
+- [ ] Start the development server: `pnpm dev`
+- [ ] Visit `http://localhost:8090/_/` and create the super-admin account
+- [ ] Configure Application URL in PocketBase dashboard (`_ > Settings > Application`)
+- [ ] (Optional) Set up SMTP, OAuth providers, and Polar webhooks (see respective sections below)
+- [ ] (Optional) Generate TypeScript types: `pnpm typegen`
 
 ## Local Development
 
