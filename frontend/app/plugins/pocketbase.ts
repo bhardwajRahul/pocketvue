@@ -13,8 +13,11 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
 
   // Create custom $fetch instance for API calls
+  // In production, use empty string so relative paths resolve from root
+  // In dev, use pb.baseURL which is 'http://localhost:8090'
+  const apiBaseURL = import.meta.dev ? pb.baseURL : ''
   const api = $fetch.create({
-    baseURL: pb.baseURL,
+    baseURL: apiBaseURL,
     onRequest({ request, options }) {
       // Get auth token from PocketBase auth store
       const token = pb.authStore.token

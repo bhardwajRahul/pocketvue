@@ -24,7 +24,18 @@ export function useApi<T>(
   const toast = useToast()
   const { silent = false, onResponseError, ...fetchOptions } = options || {}
 
-  return useFetch<T, FetchError<ApiError>>(url, {
+  // Ensure API paths start with '/' to be absolute from root
+  const normalizeUrl = (urlPath: string | (() => string)): string | (() => string) => {
+    if (typeof urlPath === 'function') {
+      return () => {
+        const resolved = urlPath()
+        return resolved.startsWith('/') ? resolved : `/${resolved}`
+      }
+    }
+    return urlPath.startsWith('/') ? urlPath : `/${urlPath}`
+  }
+
+  return useFetch<T, FetchError<ApiError>>(normalizeUrl(url), {
     ...fetchOptions,
     $fetch: $api,
     onResponseError(context: any) {
@@ -61,7 +72,13 @@ export function useApiAsync<T>(
   const { $api } = useNuxtApp()
   const { silent = false, ...fetchOptions } = options || {}
 
+  // Ensure API paths start with '/' to be absolute from root
+  const normalizeUrl = (urlPath: string | (() => string)): string => {
+    const resolved = typeof urlPath === 'function' ? urlPath() : urlPath
+    return resolved.startsWith('/') ? resolved : `/${resolved}`
+  }
+
   return useAsyncData<T, FetchError<ApiError>>(key, () => {
-    return $api(url as string, fetchOptions as any)
+    return $api(normalizeUrl(url), fetchOptions as any)
   })
 }
